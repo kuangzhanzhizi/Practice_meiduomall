@@ -67,6 +67,7 @@ var vm = new Vue({
             // 检查重名
             if (this.error_name == false) {
                 var url = this.host + '/usernames/' + this.username + '/count/';
+                //发送ajax请求,一般axios+vue来发送ajax请求
                 axios.get(url, {
                     responseType: 'json'
                 })

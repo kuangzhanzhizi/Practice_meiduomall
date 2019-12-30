@@ -9,9 +9,10 @@ https://docs.djangoproject.com/en/1.11/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/1.11/ref/settings/
 """
-
+# 操作系统ubuntu模块
 import os
-
+# python模块
+import sys
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 '''
 __file__===>当前文件名dev.py
@@ -21,6 +22,8 @@ os.path.dirname()===>上级目录
 '''
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
+# 指定应用的导包路径为meiduo_mall/apps
+sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -43,6 +46,10 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    # 完整的包路径
+    # 'meiduo_mall.apps.users.apps.UsersConfig'
+    'users.apps.UsersConfig',
+    'verifycation.apps.VerifycationConfig',
 ]
 
 MIDDLEWARE = [
@@ -90,12 +97,12 @@ DATABASES = {
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.sqlite3',
+#         'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
+#     }
+# }
 
 
 # Password validation
@@ -156,6 +163,13 @@ CACHES = {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
     },
+    "image_code": {  # 图形验证码
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://192.168.2.131:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
 }
 # 指定session的保存方案
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -203,3 +217,6 @@ LOGGING = {
         },
     }
 }
+
+# 指定用户模型类==>应用名称.模型类名称
+AUTH_USER_MODEL = "users.User"
