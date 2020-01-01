@@ -1,7 +1,6 @@
 from django import http
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.views import View
-from django.contrib.auth.models import User
 import re
 from .models import User
 from django.contrib.auth import login
@@ -52,7 +51,7 @@ class RegisterView(View):
 		# 2.状态保持
 		login(request, user)
 		# 响应
-		return credits('/')
+		return redirect('/')
 
 
 class UsernameCountView(View):

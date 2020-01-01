@@ -25,6 +25,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # 指定应用的导包路径为meiduo_mall/apps
 sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
@@ -166,6 +167,13 @@ CACHES = {
     "image_code": {  # 图形验证码
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": "redis://192.168.2.131:6379/2",
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        }
+    },
+    "sms_code": {  # 短信验证码
+        "BACKEND": "django_redis.cache.RedisCache",
+        "LOCATION": "redis://192.168.2.131:6379/3",
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient",
         }
