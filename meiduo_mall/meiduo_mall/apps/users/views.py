@@ -5,7 +5,10 @@ import re
 from .models import User
 from django.contrib.auth import login
 from meiduo_mall.utils.response_code import RETCODE
+from django_redis import get_redis_connection
+from django.contrib.auth import authenticate
 # Create your views here.
+
 
 
 class RegisterView(View):
@@ -40,6 +43,18 @@ class RegisterView(View):
 		if User.objects.filter(mobile=mobile).count() > 0:
 			return http.HttpResponseForbidden('手机号已经存在')
 		# 短信验证码
+		# 1.读取redis中的短信验证码
+		redis_cli = get_redis_connection('sms_code')
+		sms_code_redis = redis_cli.get(mobile)
+		# 2.判断是否过期
+		if sms_code_redis is None:
+			return http.HttpResponseForbidden('短信验证码已经过期')
+		# 3.立即删除redis中的短信验证码, 不能使用第二次
+		redis_cli.delete(mobile)
+		redis_cli.delete(mobile+'_flag')
+		# 4.判断是否正确
+		if sms_code_redis.decode() != sms_code:
+			return http.HttpResponseForbidden('短信验证码错误')
 
 		# 处理
 		# 1.创建用户对象, 使用这个方法原因是密码需要加密
@@ -76,3 +91,32 @@ class MobileCountView(View):
 			'errmsg': 'OK'
 		})
 
+
+class LoginView(View):
+	def get(self, request):
+		return render(request, 'login.html')
+
+	def post(self, request):
+		"""
+		user = User.objects.get(username=username)
+		user.password == pwd == 加密(pwd) ==> user.check_password(pwd)
+
+		:param request:
+		:return:
+		"""
+
+		# 接收
+		username = request.POST.get('username')
+		pwd = request.POST.get('pwd')
+		# 验证
+		user = authenticate(request, username=username, password=pwd)
+		# 处理
+		if user is None:
+			# 用户名或者密码错误
+			return http.HttpResponseForbidden('用户名或者密码错误')
+		else:
+			# 用户名或者密码正确
+			# 2.状态保持
+			# 响应
+			login(request, user)
+			return redirect('/')

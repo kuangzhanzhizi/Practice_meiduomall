@@ -1,4 +1,3 @@
-from django.shortcuts import render
 from django.views import View
 from meiduo_mall.libs.captcha.captcha import captcha
 from django_redis import get_redis_connection
@@ -6,7 +5,7 @@ from . import constants
 from django import http
 from meiduo_mall.utils.response_code import RETCODE
 import random
-from meiduo_mall.libs.yuntongxun.sms import CCP
+from celery_tasks.sms.tasks import send_sms
 
 
 class ImageCodeView(View):
@@ -30,6 +29,13 @@ class SmsCodeView(View):
 		uuid = request.GET.get('image_code_id')
 		image_code = request.GET.get('image_code')
 		# 验证
+		redis_cli = get_redis_connection('sms_code')
+		# 0.是否60秒内
+		if redis_cli.get(mobile+'_flag') is not None:
+			return http.JsonResponse({
+				"code": RETCODE.SMSCODERR,
+				"errmsg": "发送短信太频繁请稍后再发"
+			})
 		# 1.非空
 		if not all([uuid, image_code]):
 			# 只要是ajax请求 都返回JsonResponse
@@ -60,12 +66,22 @@ class SmsCodeView(View):
 		sms_code = '%06d' % random.randint(0, 999999)
 		# 2.存入redis
 		redis_cli = get_redis_connection('sms_code')
-		redis_cli.setex(mobile, constants.SMS_CODE_EXPIERS, sms_code)
-		# 3.发短信
-		ccp = CCP()
-		ccp.send_template_sms(mobile, [sms_code, constants.SMS_CODE_EXPIERS/60], 1)
-		print(sms_code)
-		# 相应
+		# redis_cli.setex(mobile, constants.SMS_CODE_EXPIERS, sms_code)
+		# 3.写发送标记
+		# redis_cli.setex(mobile+'_flag', constants.SMS_CODE_FLAG, 1)
+		# 优化:使用管道
+		redis_pl = redis_cli.pipeline()
+		redis_pl.setex(mobile, constants.SMS_CODE_EXPIERS, sms_code)
+		redis_pl.setex(mobile+'_flag', constants.SMS_CODE_EXPIERS, 1)
+		redis_pl.execute()
+
+		# 4.发短信
+		# ccp = CCP()
+		# ccp.send_template_sms(mobile, [sms_code, constants.SMS_CODE_EXPIERS/60], 1)
+		# print(sms_code)
+		# 通过delay调用, 可以将任务加到队列中,交给celery中去执行
+		send_sms.delay(mobile, sms_code)
+		# 响应
 		return http.JsonResponse({
 			"code": RETCODE.OK,
 			"errmsg": "OK"
