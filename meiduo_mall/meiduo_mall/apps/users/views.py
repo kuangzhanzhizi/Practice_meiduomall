@@ -3,12 +3,12 @@ from django.shortcuts import render, redirect
 from django.views import View
 import re
 from .models import User
-from django.contrib.auth import login
+from django.contrib.auth import login,logout
 from meiduo_mall.utils.response_code import RETCODE
 from django_redis import get_redis_connection
 from django.contrib.auth import authenticate
+from . import contants
 # Create your views here.
-
 
 
 class RegisterView(View):
@@ -119,4 +119,18 @@ class LoginView(View):
 			# 2.状态保持
 			# 响应
 			login(request, user)
-			return redirect('/')
+
+			# 向cookie中写用户名, 用于客户端显示
+			response = redirect('/')
+			response.set_cookie('username', username, max_age=contants.USERNAME_COOKIE_EXPIRES)
+			return response
+
+
+class LogoutView(View):
+	def get(self, request):
+		# 删除状态保持
+		logout(request)
+		# 删除cookie中的username
+		response = redirect('/login/')
+		response.delete_cookie('username')
+		return response

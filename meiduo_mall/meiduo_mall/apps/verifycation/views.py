@@ -29,9 +29,9 @@ class SmsCodeView(View):
 		uuid = request.GET.get('image_code_id')
 		image_code = request.GET.get('image_code')
 		# 验证
-		redis_cli = get_redis_connection('sms_code')
+		redis_cli_sms = get_redis_connection('sms_code')
 		# 0.是否60秒内
-		if redis_cli.get(mobile+'_flag') is not None:
+		if redis_cli_sms.get(mobile+'_flag') is not None:
 			return http.JsonResponse({
 				"code": RETCODE.SMSCODERR,
 				"errmsg": "发送短信太频繁请稍后再发"
@@ -45,8 +45,8 @@ class SmsCodeView(View):
 			})
 		# 2.图形验证码是否正确
 		# 2.1从redis中读取之前保存的图形验证码文本
-		redis_cli = get_redis_connection('image_code')
-		image_code_redis = redis_cli.get(uuid)
+		redis_cli_image = get_redis_connection('image_code')
+		image_code_redis = redis_cli_image.get(uuid)
 		# 2.2如果redis中的数据过期则提示
 		if image_code_redis is None:
 			return http.JsonResponse({
@@ -54,7 +54,7 @@ class SmsCodeView(View):
 				"errmsg": "图形验证码已过期,点击图片刷新"
 			})
 		# 立即删除redis中的图形验证码, 表示这个值不能使用第二次
-		redis_cli.delete(uuid)
+		redis_cli_image.delete(uuid)
 		# 对比图形验证码 不区分大小写 转换从redis读取的数据为bytes类型必须转换为string 不区分大小写
 		if image_code_redis.decode().lower() != image_code.lower():
 			return http.JsonResponse({
@@ -70,7 +70,7 @@ class SmsCodeView(View):
 		# 3.写发送标记
 		# redis_cli.setex(mobile+'_flag', constants.SMS_CODE_FLAG, 1)
 		# 优化:使用管道
-		redis_pl = redis_cli.pipeline()
+		redis_pl = redis_cli_sms.pipeline()
 		redis_pl.setex(mobile, constants.SMS_CODE_EXPIERS, sms_code)
 		redis_pl.setex(mobile+'_flag', constants.SMS_CODE_EXPIERS, 1)
 		redis_pl.execute()
@@ -82,6 +82,7 @@ class SmsCodeView(View):
 		# 通过delay调用, 可以将任务加到队列中,交给celery中去执行
 		send_sms.delay(mobile, sms_code)
 		# 响应
+
 		return http.JsonResponse({
 			"code": RETCODE.OK,
 			"errmsg": "OK"
