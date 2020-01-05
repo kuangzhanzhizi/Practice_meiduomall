@@ -8,6 +8,9 @@ from meiduo_mall.utils.response_code import RETCODE
 from django_redis import get_redis_connection
 from django.contrib.auth import authenticate
 from . import contants
+from django.utils.decorators import method_decorator
+from django.contrib.auth.decorators import login_required
+from meiduo_mall.utils.login import LoginRequiredMixin
 # Create your views here.
 
 
@@ -108,6 +111,7 @@ class LoginView(View):
 		# 接收
 		username = request.POST.get('username')
 		pwd = request.POST.get('pwd')
+		next_url = request.GET.get('next', '/')
 		# 验证
 		user = authenticate(request, username=username, password=pwd)
 		# 处理
@@ -121,7 +125,7 @@ class LoginView(View):
 			login(request, user)
 
 			# 向cookie中写用户名, 用于客户端显示
-			response = redirect('/')
+			response = redirect(next_url)
 			response.set_cookie('username', username, max_age=contants.USERNAME_COOKIE_EXPIRES)
 			return response
 
@@ -134,3 +138,15 @@ class LogoutView(View):
 		response = redirect('/login/')
 		response.delete_cookie('username')
 		return response
+
+
+# @method_decorator(login_required, name='dispatch')
+class UserCenterInfoView(LoginRequiredMixin, View):
+	def get(self, request):
+		# if request.user.is_authenticated:
+		# 	return render(request, 'user_center_info.html')
+		# else:
+		# 	return redirect('/login/')
+		return render(request, 'user_center_info.html')
+
+
