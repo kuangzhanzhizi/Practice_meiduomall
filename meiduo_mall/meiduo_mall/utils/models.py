@@ -1,5 +1,6 @@
 from django.db import models
 
+
 class BaseModel(models.Model):
 	"""为模型类补充字段"""
 	# auto_now_add为添加时的时间，更新对象时不会有变动。

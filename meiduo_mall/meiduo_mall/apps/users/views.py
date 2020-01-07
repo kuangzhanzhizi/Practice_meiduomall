@@ -111,6 +111,7 @@ class LoginView(View):
 		# 接收
 		username = request.POST.get('username')
 		pwd = request.POST.get('pwd')
+		# 在LoginRequiredMixin验证登录状态,重定向上一个页面
 		next_url = request.GET.get('next', '/')
 		# 验证
 		user = authenticate(request, username=username, password=pwd)
@@ -141,6 +142,7 @@ class LogoutView(View):
 
 
 # @method_decorator(login_required, name='dispatch')
+# 多继承中先继承左边再继承右边,重写as_view方法.
 class UserCenterInfoView(LoginRequiredMixin, View):
 	def get(self, request):
 		# if request.user.is_authenticated:

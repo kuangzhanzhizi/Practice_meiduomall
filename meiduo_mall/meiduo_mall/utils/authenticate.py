@@ -4,6 +4,7 @@ import re
 from users.models import User
 
 
+# 对原有的认证功能进行扩展
 class MeiduoModelBackend(ModelBackend):
 	def authenticate(self, request, username=None, password=None, **kwargs):
 		# 变量username的值, 可以是用户名 ,也可以手机号, 需要判断, 在查询
