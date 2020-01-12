@@ -33,6 +33,7 @@ class OAuthQQURLView(View):
 
 class OAuthQQOpenid(View):
 	def get(self, request):
+		# /oauth_callback?code=3FA13DE120C4AD66857AA6B628535C91&state=%2F
 		code = request.GET.get('code')
 		state = request.GET.get('state', '/')
 		# 字典的两种写法
@@ -50,7 +51,7 @@ class OAuthQQOpenid(View):
 		openid = oauthqq.get_open_id(token)
 		# 判断是否是初次授权
 		try:
-			# 获取open_id的值
+			# 获取这条open_id对应的记录
 			qquser = OAuthQQUser.objects.get(openid=openid)
 		except:
 			# 将openid加密
@@ -62,7 +63,7 @@ class OAuthQQOpenid(View):
 			# 未查到数据,则为初次授权,显示绑定界面
 			return render(request, 'oauth_callback.html', context)
 		else:
-			#查询到授权对象,则状态保持,转到相关页面 06:32
+			#查询到授权对象,则状态保持,转到相关页面
 			# 根据外键user_id获取主键user对象
 			user = qquser.user
 			login(request, user)
@@ -79,7 +80,7 @@ class OAuthQQOpenid(View):
 		pwd = request.POST.get('pwd')
 		sms_code = request.POST.get('sms_code')
 		state = request.GET.get('state', '/')
-		print(access_token)
+		# print(access_token)
 		# 验证:参考注册的验证, 解密
 		openid_dict = meiduo_signature.loads(access_token, contants.OPENID_EXPIRES)
 		if openid_dict is None:
@@ -95,7 +96,7 @@ class OAuthQQOpenid(View):
 		else:
 			# 3.如果已使用，则验证密码
 			if not user.check_password(pwd):
-				return http.HttpResponseForbidden('手机号已经使用')
+				return http.HttpResponseForbidden('密码输入错误')
 		# 4 绑定:新建OAuthQQUser对象
 		qquser = OAuthQQUser.objects.create(
 			user=user,

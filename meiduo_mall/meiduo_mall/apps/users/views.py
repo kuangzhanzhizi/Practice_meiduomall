@@ -1,9 +1,11 @@
 from django import http
+from django.conf import settings
+from django.core.mail import send_mail
 from django.shortcuts import render, redirect
 from django.views import View
 import re
-from .models import User
-from django.contrib.auth import login,logout
+from .models import User, Address
+from django.contrib.auth import login, logout
 from meiduo_mall.utils.response_code import RETCODE
 from django_redis import get_redis_connection
 from django.contrib.auth import authenticate
@@ -11,6 +13,9 @@ from . import contants
 from django.utils.decorators import method_decorator
 from django.contrib.auth.decorators import login_required
 from meiduo_mall.utils.login import LoginRequiredMixin
+import json
+from celery_tasks.email_active.tasks import send_active_mail
+from meiduo_mall.utils import meiduo_signature
 # Create your views here.
 
 
@@ -152,3 +157,139 @@ class UserCenterInfoView(LoginRequiredMixin, View):
 		return render(request, 'user_center_info.html')
 
 
+class EmailView(LoginRequiredMixin, View):
+	def put(self, request):
+		# 接收 body json xml str 请求体 非form表单的参数解析
+		json_dict = json.loads(request.body.decode())
+		email = json_dict.get('email')
+		# 验证
+		if not all([email]):
+			return http.JsonResponse({
+				'code': RETCODE.EMAILERR,
+				'errmsg': "邮箱无效"
+			})
+		if not re.match('^[a-z0-9][\w\.\-]*@[a-z0-9\-]+(\.[a-z]{2,5}){1,2}$', email):
+			return http.JsonResponse({
+				'code': RETCODE.EMAILERR,
+				'errmsg': "邮箱格式错误"
+			})
+		# 处理:修改当前登录用户的邮箱属性,如果已经登录
+		# HttpRequest.user实际上是由一个定义在django.contrib.auth.models 中的  user model  类  所创建的对象
+		user = request.user
+		user.email = email
+		user.save()
+		# 发邮件: 耗时代码, celery异步
+		# send_mail('美多商城-邮箱激活', '', settings.EMAIL_FROM, [email], html_message='')
+		# 将用户编号加密
+		token = meiduo_signature.dumps({'user_id': user.id}, contants.EMAIL_ACTIVE_EXPIRES)
+		verify_url = settings.EMAIL_VERIFY_URL + '?token=' + token
+		send_active_mail.delay(email, verify_url)
+
+		# 响应
+		return http.JsonResponse({
+				'code': RETCODE.OK,
+				'errmsg': 'OK'
+			})
+
+
+class EmailActiveView(View):
+	def get(self, request):
+		# 接收
+		token = request.GET.get('token')
+		# 验证
+		if not all([token]):
+			return http.HttpResponseForbidden('参数无效')
+		# 解密, 获取用户编号
+		json_dict = meiduo_signature.loads(token, contants.EMAIL_ACTIVE_EXPIRES)
+		if json_dict is None:
+			return http.HttpResponseForbidden('激活信息无效')
+		user_id = json_dict.get('user_id')
+		# 处理
+		try:
+			# 这里的PK代表主键
+			user = User.objects.get(pk=user_id)
+		except:
+			return http.HttpResponseForbidden('用户无效')
+		user.email_active = True
+		user.save()
+		# 响应
+		return redirect('/info/')
+
+
+class AddressView(LoginRequiredMixin, View):
+	def get(self, request):
+		# 查询当前登录用户的所有的收货地址
+		# request.user.addresses.all()
+		address_list = Address.objects.filter(user_id=request.user.id)
+		address_list2=[]
+		for address in address_list:
+			address_list2.append({
+				'id': address.id,
+				'receiver': address.receiver,
+				'province': address.province.name,
+				'province_id': address.province_id,
+				'city': address.city.name,
+				'city_id': address.city_id,
+				'district': address.district.name,
+				'district_id': address.district_id,
+				'place': address.detail_address,
+				'mobile': address.mobile,
+				'tel': address.phone,
+				'email': address.email,
+			})
+		context = {
+			'addresses': address_list2,
+			'user': request.user
+		}
+		return render(request, 'user_center_site.html', context)
+
+
+class AddressCreateView(LoginRequiredMixin, View):
+	def post(self, request):
+		# 接收:不是表单, 而是JSON数据 body拿到是字节
+		json_dict = json.loads(request.body.decode())
+		title = json_dict.get('title')
+		receiver = json_dict.get('receiver')
+		province_id = json_dict.get('province_id')
+		city_id = json_dict.get('city_id')
+		district_id = json_dict.get('district_id')
+		place = json_dict.get('place')
+		mobile = json_dict.get('mobile')
+		tel = json_dict.get('tel')
+		email = json_dict.get('email')
+		# 验证
+		if not all([title, receiver, province_id, city_id, district_id, place, mobile]):
+			return http.JsonResponse({'code': RETCODE.PARAMERR, 'errmsg': '参数不完整'})
+		# 处理:创建对象
+		address = Address.objects.create(
+			user=request.user,
+			title=title,
+			receiver=receiver,
+			province_id=province_id,
+			city_id=city_id,
+			district_id=district_id,
+			detail_address=place,
+			mobile=mobile,
+			phone=tel,
+			email=email
+		)
+		# 响应
+		return http.JsonResponse({
+			'code': RETCODE.OK,
+			'errmsg': 'OK',
+			'address': {
+				'id': address.id,
+				'title': address.title,
+				'receiver': address.receiver,
+				'province': address.province.name,
+				'province_id': address.province_id,
+				'city': address.city.name,
+				'city_id': address.city_id,
+				'district': address.district.name,
+				'district_id': address.district_id,
+				'place': address.detail_address,
+				'mobile': address.mobile,
+				'tel': tel,
+				'email': email,
+			}
+		})

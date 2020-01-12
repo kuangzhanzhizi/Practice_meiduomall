@@ -29,6 +29,8 @@ sys.path.insert(0, os.path.join(BASE_DIR, 'apps'))
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+# SECRET_KEY 配置变量是通用密钥, 可在 Flask 和多个第三方扩展中使用.
+# 如其名所示, 加密的强度取决于变量值的机密度. 不同的程序要使用不同的密钥, 而且要保证其他人不知道你所用的字符串.
 SECRET_KEY = 'qx$ot$wd4#71u5p@=)35*4x6soxvis8$b#h)%0k@+f&d@6!o&8'
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -54,6 +56,7 @@ INSTALLED_APPS = [
     'verifycation.apps.VerifycationConfig',
     'contents.apps.ContentsConfig',
     'oauth.apps.OauthConfig',
+    'areas.apps.AreasConfig',
 ]
 
 MIDDLEWARE = [
@@ -76,6 +79,7 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
+                # 在django中的模板中使用request数据
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -244,3 +248,14 @@ LOGIN_URL = '/login/'
 QQ_CLIENT_ID = '101518219'
 QQ_CLIENT_SECRET = '418d84ebdc7241efb79536886ae95224'
 QQ_REDIRECT_URI = 'http://www.meiduo.site:8000/oauth_callback'
+
+
+# 邮箱服务器配置
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # 指定邮件后端
+EMAIL_HOST = 'smtp.163.com'  # 发邮件主机
+EMAIL_PORT = 25  # 发邮件端口
+EMAIL_HOST_USER = 'mkcocodavid@163.com'  # 授权的邮箱
+EMAIL_HOST_PASSWORD = 'ying4644'  # 邮箱授权时获得的密码，非注册登录密码
+EMAIL_FROM = '美多商城<mkcocodavid@163.com>'  # 发件人抬头
+# 邮箱验证链接
+EMAIL_VERIFY_URL = 'http://www.meiduo.site:8000/emails/verification/'

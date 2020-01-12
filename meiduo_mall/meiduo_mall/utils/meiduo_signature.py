@@ -8,6 +8,7 @@ def dumps(json, expires):
     :param json: 字典
     :return: 字符串
     '''
+    # expires_in 代表过期时间
     serializer = TimedJSONWebSignatureSerializer(settings.SECRET_KEY, expires_in=expires)
     json_str = serializer.dumps(json).decode()
     return json_str

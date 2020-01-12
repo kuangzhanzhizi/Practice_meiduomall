@@ -77,11 +77,11 @@ var vm = new Vue({
 			}
 		},
 		// 发送手机短信验证码
-		send_sms_code(){
-			if (this.sending_flag == true) {
-				return;
-			}
-			this.sending_flag = true;
+        send_sms_code: function () {
+            if (this.sending_flag == true) {
+                return;
+            }
+            this.sending_flag = true;
 
 			// 校验参数，保证输入框有数据填写
 			this.check_phone();

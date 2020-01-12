@@ -1,6 +1,8 @@
 from celery import Celery
 import os
 
+
+# 启动celery: celery -A celery_tasks.main worker -l info -P eventlet
 # 读取django项目的配置
 os.environ["DJANGO_SETTINGS_MODULE"] = "meiduo_mall.settings.dev"
 # 创建celery对象
@@ -9,5 +11,6 @@ app = Celery('meiduo')
 app.config_from_object('celery_tasks.config')
 # 加载可用的任务
 app.autodiscover_tasks([
-	'celery_tasks.sms'
+	'celery_tasks.sms',
+	'celery_tasks.email_active',
 ])
