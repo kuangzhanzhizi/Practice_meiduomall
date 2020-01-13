@@ -33,6 +33,8 @@ class Address(BaseModel):
 	phone = models.CharField(max_length=20)
 	# 邮箱
 	email = models.CharField(max_length=50)
+	# 逻辑删除 逻辑删除本质 就是一个修改
+	is_delete = models.BooleanField(default=False)
 
 	class Meta:
 		db_table = 'tb_addresses'

@@ -220,7 +220,7 @@ class AddressView(LoginRequiredMixin, View):
 	def get(self, request):
 		# 查询当前登录用户的所有的收货地址
 		# request.user.addresses.all()
-		address_list = Address.objects.filter(user_id=request.user.id)
+		address_list = Address.objects.filter(user_id=request.user.id, is_delete=False)
 		address_list2=[]
 		for address in address_list:
 			address_list2.append({
@@ -293,3 +293,114 @@ class AddressCreateView(LoginRequiredMixin, View):
 				'email': email,
 			}
 		})
+
+
+class AddressEditView(LoginRequiredMixin, View):
+	def put(self, request, address_id):
+		# 接收:不是表单, 而是JSON数据 body拿到是字节
+		json_dict = json.loads(request.body.decode())
+		title = json_dict.get('title')
+		receiver = json_dict.get('receiver')
+		province_id = json_dict.get('province_id')
+		city_id = json_dict.get('city_id')
+		district_id = json_dict.get('district_id')
+		place = json_dict.get('place')
+		mobile = json_dict.get('mobile')
+		tel = json_dict.get('tel')
+		email = json_dict.get('email')
+		# 验证
+		if not all([title, receiver, province_id, city_id, district_id, place, mobile]):
+			return http.JsonResponse({'code': RETCODE.PARAMERR, 'errmsg': '参数不完整'})
+		# 处理:根据id查询收货地址, 并修改
+		address = Address.objects.get(pk=address_id)
+		address.province_id = province_id
+		address.city_id = city_id
+		address.district_id = district_id
+		address.detail_address = place
+		address.mobile = mobile
+		address.phone = tel
+		address.email = email
+		address.save()
+		# 响应
+		return http.JsonResponse({
+			'code': RETCODE.OK,
+			'errmsg': 'OK',
+			'address': {
+				'id': address.id,
+				'title': address.title,
+				'receiver': address.receiver,
+				'province': address.province.name,
+				'province_id': address.province_id,
+				'city': address.city.name,
+				'city_id': address.city_id,
+				'district': address.district.name,
+				'district_id': address.district_id,
+				'place': address.detail_address,
+				'mobile': address.mobile,
+				'tel': tel,
+				'email': email,
+			}
+		})
+
+	def delete(self, request, address_id):
+		# 处理
+		address = Address.objects.get(pk=address_id)
+		# 物理删除
+		# address.delete()
+		# 逻辑删除
+		address.is_delete = True
+		# 响应
+		return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
+
+
+class AddressDefaultView(View, LoginRequiredMixin):
+	def put(self, request, address_id):
+		# 处理: 修改当前登录用户默认地址属性
+		user = request.user
+		user.default_address_id = address_id
+		user.save()
+		return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
+
+
+class AddressTitleView(View, LoginRequiredMixin):
+	def put(self, request, address_id):
+		# 接收
+		json_dict = json.loads(request.body.decode())
+		title = json_dict.get('title')
+		# 验证
+		if not all([title]):
+			return http.JsonResponse({
+				'code': RETCODE.PARAMERR,
+				'errmsg': '请指定标题'
+			})
+		if Address.objects.filter(title=title, user_id=request.user.id, is_delete=False).count() > 0:
+			return http.JsonResponse({'code': RETCODE.PARAMERR, 'errmsg': '请指定标题'})
+		# 处理
+			address = Address.objects.get(pk=address_id)
+			address.title = title
+			address.save()
+		# 响应
+		return http.JsonResponse({'code': RETCODE.OK, 'errmsg': 'OK'})
+
+
+class PwdView(View, LoginRequiredMixin):
+	def get(self, request):
+		return render(request, 'user_center_pass.html')
+
+	def post(self, request):
+		# 接收
+		old_pwd = request.POST.get('old_pwd')
+		new_pwd = request.POST.get('new_pwd')
+		new_cpwd = request.POST.get('new_cpwd')
+		# 验证
+		# 1.旧密码是否正确
+		user = request.user
+		if not user.check_password(old_pwd):
+			return http.HttpResponseForbidden('旧密码错误')
+		if not re.match('^[0-9A-Za-z]{8,20}$', new_pwd):
+			return http.HttpResponseForbidden('密码为8-20个字符')
+		if new_pwd != new_cpwd:
+			return http.HttpResponseForbidden('两个密码不一致')
+		user.set_password(new_pwd)
+		user.save()
+		return render(request, 'user_center_pass.html')
